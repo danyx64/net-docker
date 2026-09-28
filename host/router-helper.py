@@ -9,6 +9,7 @@ from pathlib import Path
 
 SOCK = "/run/net-router/router.sock"
 PERSIST = Path("/etc/net-router/network.json")
+SELECTED = Path("/etc/net-router/selected-wan")
 RUNTIME_DIR = Path("/run/net-router")
 
 def run(argv, timeout=180, check=True):
@@ -168,6 +169,8 @@ def switch(which, c=None):
         raise RuntimeError(f"{selected} has no usable IPv4/gateway")
 
     run(["ip","route","replace","default","via",gw,"dev",selected,"src",src,"metric","5"])
+    SELECTED.parent.mkdir(parents=True, exist_ok=True)
+    SELECTED.write_text(which + "\n")
     ogw, osrc = gateway_for(other), ipv4_for(other)
     if ogw and osrc:
         run(["ip","route","replace","default","via",ogw,"dev",other,"src",osrc,"metric","500"], check=False)
@@ -213,6 +216,9 @@ try:
     persisted = load_persisted()
     if persisted:
         apply_network_manual(persisted)
+        wanted = SELECTED.read_text().strip() if SELECTED.exists() else "wan1"
+        if wanted in ("wan1", "wan2"):
+            switch(wanted, persisted)
 except Exception:
     pass
 
