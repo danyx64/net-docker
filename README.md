@@ -37,7 +37,25 @@ Questo evita di dare al container il controllo completo del sistema tramite `--p
 - ritorno a WAN1 dopo N test validi;
 - storico degli ultimi test conservato nel file di stato.
 
-## Installazione
+## Immagine Docker precompilata
+
+Ogni push su `main` pubblica automaticamente:
+
+```text
+ghcr.io/danyx64/net-docker:latest
+```
+
+Per scaricare solo l'immagine:
+
+```bash
+docker pull ghcr.io/danyx64/net-docker:latest
+```
+
+Il `docker-compose.yml` del repository usa già questa immagine, quindi CasaOS non deve compilarla.
+
+> Il container gestisce la UI e la logica. Per modificare davvero bridge, route, DHCP, NAT e interfacce Ethernet serve anche l'helper host incluso nel repository. È una installazione una tantum sul Debian/CasaOS host.
+
+## Installazione Node-2 / CasaOS
 
 Sul Node-2:
 
@@ -46,8 +64,11 @@ git clone https://github.com/danyx64/net-docker.git
 cd net-docker
 chmod +x install.sh
 sudo ./install.sh
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
+
+Dopo questo CasaOS/Docker userà direttamente `ghcr.io/danyx64/net-docker:latest`.
 
 Apri:
 
