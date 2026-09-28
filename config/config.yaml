@@ -1,0 +1,21 @@
+wan1:
+  name: WAN1
+  interface: enp3s0
+  speedtest_server_id: 0
+  min_download_mbps: 40
+  min_upload_mbps: 8
+
+wan2:
+  name: WAN2
+  interface: enx00e04c680270
+  speedtest_server_id: 0
+  min_download_mbps: 20
+  min_upload_mbps: 5
+
+policy:
+  mode: auto
+  test_interval_seconds: 300
+  failures_before_switch: 2
+  successes_before_return: 3
+  return_to_wan1: true
+  speedtest_timeout_seconds: 120
