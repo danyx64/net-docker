@@ -1,42 +1,32 @@
 #!/usr/bin/env python3
-import json
-import socket
-import sys
+import json, socket, sys
+SOCK="/run/net-router/router.sock"
 
-SOCK = "/run/net-router/router.sock"
-
-def request(payload):
-    s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    s.settimeout(30)
+def req(payload):
+    s=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)
+    s.settimeout(20)
     s.connect(SOCK)
-    s.sendall((json.dumps(payload) + "\n").encode())
-    out = b""
+    s.sendall((json.dumps(payload)+"\n").encode())
+    out=b""
     while True:
-        chunk = s.recv(65536)
-        if not chunk:
-            break
-        out += chunk
+        c=s.recv(65536)
+        if not c: break
+        out+=c
     s.close()
-    data = json.loads(out.decode())
-    if not data.get("ok"):
-        print(json.dumps(data))
-        sys.exit(1)
-    print(json.dumps(data))
+    d=json.loads(out.decode())
+    print(json.dumps(d))
+    raise SystemExit(0 if d.get("ok") else 1)
 
-if len(sys.argv) < 2:
-    print(json.dumps({"ok": False, "error": "usage: net-routerctl status|interfaces|switch <wan1|wan2>|apply <json>"}))
-    sys.exit(2)
+if len(sys.argv)<2:
+    print('{"ok":false,"error":"usage: net-routerctl status|switch wan1|switch wan2|rebuild"}')
+    raise SystemExit(2)
 
-cmd = sys.argv[1]
-
-if cmd == "status":
-    request({"action": "status"})
-elif cmd == "interfaces":
-    request({"action": "interfaces"})
-elif cmd == "switch" and len(sys.argv) == 3 and sys.argv[2] in ("wan1", "wan2"):
-    request({"action": "switch", "wan": sys.argv[2]})
-elif cmd == "apply" and len(sys.argv) == 3:
-    request({"action": "apply_network_manual", "config": json.loads(sys.argv[2])})
+if sys.argv[1]=="status":
+    req({"action":"status"})
+elif sys.argv[1]=="rebuild":
+    req({"action":"rebuild"})
+elif sys.argv[1]=="switch" and len(sys.argv)==3 and sys.argv[2] in ("wan1","wan2"):
+    req({"action":"switch","wan":sys.argv[2]})
 else:
-    print(json.dumps({"ok": False, "error": "invalid command"}))
-    sys.exit(2)
+    print('{"ok":false,"error":"invalid command"}')
+    raise SystemExit(2)
