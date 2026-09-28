@@ -8,6 +8,7 @@ services:
       CONFIG_PATH: /config/config.yaml
       STATE_PATH: /data/state.json
       ROUTER_SOCKET: /run/net-router/router.sock
+      WEB_PORT: "8787"
     volumes:
       - ./config:/config
       - ./data:/data
