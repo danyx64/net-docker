@@ -1,13 +1,24 @@
+network:
+  wan1_interface: enp3s0
+  wan2_interface: enx00e04c680270
+  lan_interface: enp4s0
+  bridge_name: br0
+  lan_cidr: 192.168.100.1/24
+  dhcp_start: 192.168.100.50
+  dhcp_end: 192.168.100.200
+  dhcp_lease: 12h
+  dns_servers:
+    - 1.1.1.1
+    - 8.8.8.8
+
 wan1:
   name: WAN1
-  interface: enp3s0
   speedtest_server_id: 0
   min_download_mbps: 40
   min_upload_mbps: 8
 
 wan2:
   name: WAN2
-  interface: enx00e04c680270
   speedtest_server_id: 0
   min_download_mbps: 20
   min_upload_mbps: 5
