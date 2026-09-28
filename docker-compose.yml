@@ -1,15 +1,13 @@
 services:
   net-router:
-    image: ghcr.io/danyx64/net-docker:latest
+    build: .
     container_name: net-router
     restart: unless-stopped
     network_mode: host
     environment:
       CONFIG_PATH: /config/config.yaml
-      STATE_PATH: /data/state.json
       ROUTER_SOCKET: /run/net-router/router.sock
       WEB_PORT: "8787"
     volumes:
       - ./config:/config
-      - ./data:/data
       - /run/net-router:/run/net-router
