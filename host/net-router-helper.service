@@ -1,0 +1,15 @@
+[Unit]
+Description=Net Router privileged helper
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=NET_ROUTER_WAN1=enp3s0
+Environment=NET_ROUTER_WAN2=enx00e04c680270
+ExecStart=/usr/local/lib/net-router/router-helper.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
