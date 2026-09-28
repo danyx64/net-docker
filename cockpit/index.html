@@ -1,85 +1,37 @@
-<!doctype html>
-<html lang="it">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Router</title>
-  <link rel="stylesheet" href="router.css">
-  <script src="../base1/cockpit.js"></script>
-  <script defer src="router.js"></script>
-</head>
-<body>
+<!doctype html><html lang="it"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Router</title>
+<link rel="stylesheet" href="router.css">
+<script src="../base1/cockpit.js"></script>
+<script defer src="router.js"></script>
+</head><body>
 <main class="page">
-  <div class="page-head">
-    <div>
-      <h1>Router</h1>
-      <p>Seleziona manualmente quale WAN deve essere usata per Internet.</p>
-    </div>
-    <span id="activeBadge" class="badge">Attiva: -</span>
-  </div>
+  <div class="head"><div><h1>Router</h1><p>Bridge manuale verso la porta LAN</p></div><span id="badge" class="badge">Ponte: -</span></div>
 
   <section class="card">
-    <div class="card-title">Selezione WAN</div>
-    <div class="wan-grid">
-      <button id="wan1Btn" class="wan-card" type="button">
-        <div class="wan-top">
-          <span class="wan-title">WAN 1</span>
-          <span id="wan1State" class="state-dot">●</span>
-        </div>
-        <div class="iface">enp3s0</div>
-        <div class="metrics">
-          <div><span>IP</span><strong id="wan1Ip">-</strong></div>
-          <div><span>Gateway</span><strong id="wan1Gw">-</strong></div>
-        </div>
-        <div class="use-label">Usa WAN 1</div>
+    <h2>Scegli quale modem collegare a enp4s0</h2>
+    <div class="grid">
+      <button id="w1" class="wan" type="button">
+        <span class="title">WAN 1</span>
+        <span class="iface">enp3s0 → enp4s0</span>
+        <span class="sub">Collega il modem 1 allo switch</span>
       </button>
-
-      <button id="wan2Btn" class="wan-card" type="button">
-        <div class="wan-top">
-          <span class="wan-title">WAN 2</span>
-          <span id="wan2State" class="state-dot">●</span>
-        </div>
-        <div class="iface">enx00e04c680270</div>
-        <div class="metrics">
-          <div><span>IP</span><strong id="wan2Ip">-</strong></div>
-          <div><span>Gateway</span><strong id="wan2Gw">-</strong></div>
-        </div>
-        <div class="use-label">Usa WAN 2</div>
+      <button id="w2" class="wan" type="button">
+        <span class="title">WAN 2</span>
+        <span class="iface">enx00e04c680270 → enp4s0</span>
+        <span class="sub">Collega il modem 2 allo switch</span>
       </button>
     </div>
-    <div id="switchMessage" class="message"></div>
-    <div class="note">La WAN non selezionata resta collegata e raggiungibile; cambia solo la route predefinita per Internet.</div>
+    <div id="msg" class="msg"></div>
   </section>
 
   <section class="card">
-    <div class="card-title">LAN</div>
-    <div class="info-grid">
-      <div><span>Interfaccia</span><strong>enp4s0</strong></div>
-      <div><span>Bridge</span><strong>br0</strong></div>
-      <div><span>Gateway LAN</span><strong>192.168.100.1</strong></div>
-      <div><span>Rete</span><strong id="lanNetwork">192.168.100.0/24</strong></div>
+    <h2>Schema attuale</h2>
+    <div class="diagram">
+      <div>Modem selezionato</div><div>→</div><div id="selectedIface">-</div><div>→</div><div>br0</div><div>→</div><div>enp4s0</div><div>→</div><div>GS308</div>
     </div>
+    <p class="note">I client dietro il GS308 ricevono direttamente DHCP, gateway e rete dal modem selezionato.</p>
   </section>
 
-  <section class="card">
-    <div class="card-title">Route modem</div>
-    <p class="note">Se vuoi che entrambi i modem possano raggiungere i dispositivi dietro il GS308, aggiungi sui modem queste route statiche.</p>
-    <div class="routes">
-      <div class="route-box">
-        <div class="route-title">WAN 1</div>
-        <pre id="route1">-</pre>
-      </div>
-      <div class="route-box">
-        <div class="route-title">WAN 2</div>
-        <pre id="route2">-</pre>
-      </div>
-    </div>
-  </section>
-
-  <details class="card advanced">
-    <summary>Stato tecnico</summary>
-    <pre id="status">Caricamento...</pre>
-  </details>
-</main>
-</body>
-</html>
+  <details class="card"><summary>Stato tecnico</summary><pre id="status">Caricamento...</pre></details>
+</main></body></html>
