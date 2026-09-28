@@ -1,39 +1,128 @@
 # net-docker
 
-Dual-WAN router appliance for Debian/CasaOS hosts.
+Web UI Docker per trasformare un host Debian/CasaOS in un router dual-WAN semplice da gestire.
 
-## What it does
+## Topologia consigliata
 
-- Uses three host Ethernet interfaces:
-  - WAN1: `enp3s0`
-  - WAN2: `enx00e04c680270`
-  - LAN: `enp4s0`
-- Runs a web UI in Docker.
-- Periodically runs Ookla Speedtest CLI against a configured server ID per WAN.
-- Lets you define minimum download/upload thresholds.
-- Automatically switches the host default route to the other WAN when the active WAN falls below thresholds for a configurable number of consecutive tests.
-- Supports manual AUTO / WAN1 / WAN2 selection.
-- Keeps the switching logic on the host through a very small privileged helper instead of giving the whole web container full host privileges.
+```text
+Modem WAN1 ──> enp3s0
+Modem WAN2 ──> enx00e04c680270
+GS308/LAN   <─ enp4s0
+                │
+              Node-2
+```
 
-## Important
+La UI gira in Docker, mentre un piccolo helper sul sistema host applica le modifiche reali a NetworkManager, bridge, DHCP, NAT e route.
 
-Docker cannot safely "own" the physical NICs while the host is also using them. This project therefore keeps routing/NAT on the Debian host and runs the controller/UI in Docker. The controller talks to a restricted host helper through a bind-mounted Unix socket.
+Questo evita di dare al container il controllo completo del sistema tramite `--privileged`.
 
-Before installation, make sure WAN1 and WAN2 already obtain an IPv4 address and gateway via DHCP.
+## Funzioni
 
-## Quick start
+- scelta da UI di WAN1, WAN2 e porta LAN;
+- creazione bridge Linux LAN, ad esempio `br0`;
+- IP LAN e range DHCP configurabili;
+- dnsmasq configurato automaticamente;
+- NAT nftables su entrambe le WAN;
+- forwarding IPv4;
+- WAN via DHCP;
+- priorità WAN1/WAN2;
+- modalità AUTO, WAN1 forzata, WAN2 forzata;
+- Ookla Speedtest CLI;
+- server Speedtest fisso per ogni WAN tramite server ID;
+- ricerca dei server Ookla vicini;
+- test manuale da UI;
+- test automatici periodici;
+- soglia minima download e upload separata per WAN;
+- passaggio a WAN2 dopo N test WAN1 sotto soglia;
+- ritorno a WAN1 dopo N test validi;
+- storico degli ultimi test conservato nel file di stato.
+
+## Installazione
+
+Sul Node-2:
 
 ```bash
 git clone https://github.com/danyx64/net-docker.git
 cd net-docker
+chmod +x install.sh
 sudo ./install.sh
 docker compose up -d --build
 ```
 
-Open:
+Apri:
 
 ```text
-http://HOST_IP:8787
+http://IP-DEL-NODE-2:8787
 ```
 
-Default configuration is in `config/config.yaml`.
+## Prima configurazione dalla UI
+
+Per l'hardware attuale:
+
+```text
+WAN1: enp3s0
+WAN2: enx00e04c680270
+LAN : enp4s0
+Bridge: br0
+LAN: 192.168.100.1/24
+DHCP: 192.168.100.50 - 192.168.100.200
+```
+
+Poi premi **SALVA + APPLICA RETE**.
+
+Il pulsante può interrompere temporaneamente la connessione al Node-2, perché NetworkManager ricrea le connessioni delle tre porte.
+
+## Speedtest
+
+Ogni WAN ha:
+
+- Server ID Ookla. `0` significa selezione automatica.
+- Download minimo in Mbps.
+- Upload minimo in Mbps.
+
+Dalla UI puoi anche premere **Mostra server vicini** e selezionare uno degli ID trovati.
+
+Il client Ookla supporta il binding alla specifica interfaccia con `--interface` e la selezione fissa del server con `--server-id`. Questo permette di testare WAN1 e WAN2 separatamente.
+
+## Logica AUTO
+
+Esempio:
+
+```text
+WAN1 minimo: 50 Mbps down / 10 Mbps up
+WAN2 minimo: 20 Mbps down / 5 Mbps up
+Test ogni: 300 secondi
+KO prima del failover: 2
+OK WAN1 prima del ritorno: 3
+```
+
+Se WAN1 resta sotto una delle sue soglie per il numero configurato di test consecutivi e WAN2 è valida, il router sposta la route principale su WAN2.
+
+Quando WAN1 torna sopra soglia per il numero configurato di test consecutivi, viene ripristinata come WAN principale.
+
+## Nota importante sullo switch
+
+Il Netgear GS308 unmanaged continua a fare semplicemente switching Ethernet. Tutto il routing, DHCP, NAT e failover viene fatto dal Node-2.
+
+I dispositivi LAN vanno collegati al GS308; il GS308 va collegato solo alla porta LAN scelta sul Node-2.
+
+## Wi-Fi
+
+Se il Node-2 è collegato anche via Wi-Fi a uno degli stessi modem, può comparire una route predefinita aggiuntiva. Per un router stabile conviene lasciare attive come uplink solo le due WAN configurate, oppure usare il Wi-Fi esclusivamente come gestione senza route predefinita.
+
+## File principali
+
+```text
+app/main.py                       UI + API + logica failover
+host/router-helper.py             operazioni privilegiate host
+host/net-router-helper.service    servizio helper
+config/config.yaml                configurazione
+data/state.json                   risultati e stato runtime
+docker-compose.yml                container UI/controller
+```
+
+## Porte
+
+- UI Net Router: TCP `8787`
+- CasaOS resta sulla sua porta attuale.
+- Non viene esposto nessun socket privilegiato via TCP: il container comunica con l'helper tramite `/run/net-router/router.sock`.
