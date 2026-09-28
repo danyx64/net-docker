@@ -1,6 +1,6 @@
 services:
   net-router:
-    build: .
+    image: ghcr.io/danyx64/net-docker:latest
     container_name: net-router
     restart: unless-stopped
     network_mode: host
