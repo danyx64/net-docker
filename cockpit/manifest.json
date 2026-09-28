@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "requires": {
+    "cockpit": "358"
+  },
+  "menu": {
+    "index": {
+      "label": "Router",
+      "order": 35,
+      "path": "index.html"
+    }
+  }
+}
