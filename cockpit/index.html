@@ -2,83 +2,90 @@
 <html lang="it">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Router</title>
   <link rel="stylesheet" href="router.css">
   <script src="../base1/cockpit.js"></script>
   <script defer src="router.js"></script>
 </head>
 <body>
-  <main>
-    <header>
-      <div>
-        <h1>Router</h1>
-        <p>Dual WAN manuale, LAN in bridge, nessun NAT.</p>
-      </div>
-      <div id="activeBadge" class="badge">WAN attiva: -</div>
-    </header>
+<main class="page">
+  <div class="page-header">
+    <div>
+      <h1>Router</h1>
+      <p class="subtitle">Selezione manuale della linea Internet</p>
+    </div>
+    <span id="activeBadge" class="status-badge">WAN attiva: -</span>
+  </div>
 
-    <section class="card">
-      <h2>Linea Internet</h2>
-      <div class="wan-buttons">
-        <button id="wan1Btn" class="wan" type="button">WAN1</button>
-        <button id="wan2Btn" class="wan" type="button">WAN2</button>
-      </div>
-      <p class="hint">Entrambe le reti modem restano raggiungibili. Il pulsante cambia solo la route Internet predefinita.</p>
-      <div id="switchMessage" class="message"></div>
-    </section>
+  <section class="pf-card">
+    <div class="section-title">Linea Internet</div>
+    <div class="wan-grid">
+      <button id="wan1Btn" class="wan-card" type="button">
+        <span class="wan-name">WAN 1</span>
+        <span class="wan-iface">enp3s0</span>
+        <span id="wan1Ip" class="wan-meta">IP: -</span>
+        <span id="wan1Gw" class="wan-meta">Gateway: -</span>
+        <span class="wan-action">Usa WAN 1</span>
+      </button>
 
-    <section class="card">
-      <h2>Porte e LAN</h2>
-      <div class="grid">
-        <label>WAN1
-          <select id="wan1"></select>
-        </label>
-        <label>WAN2
-          <select id="wan2"></select>
-        </label>
-        <label>LAN verso switch
-          <select id="lan"></select>
-        </label>
-        <label>Bridge
-          <input id="bridge" value="br0">
-        </label>
-        <label>LAN/CIDR
-          <input id="lanCidr" value="192.168.100.1/24">
-        </label>
-        <label>DHCP da
-          <input id="dhcpStart" value="192.168.100.50">
-        </label>
-        <label>DHCP a
-          <input id="dhcpEnd" value="192.168.100.200">
-        </label>
-        <label>DNS
-          <input id="dns" value="1.1.1.1,8.8.8.8">
-        </label>
-      </div>
-      <button id="applyBtn" class="primary" type="button">Salva e applica rete</button>
-      <div id="applyMessage" class="message"></div>
-    </section>
+      <button id="wan2Btn" class="wan-card" type="button">
+        <span class="wan-name">WAN 2</span>
+        <span class="wan-iface">enx00e04c680270</span>
+        <span id="wan2Ip" class="wan-meta">IP: -</span>
+        <span id="wan2Gw" class="wan-meta">Gateway: -</span>
+        <span class="wan-action">Usa WAN 2</span>
+      </button>
+    </div>
+    <div id="switchMessage" class="message"></div>
+    <p class="hint">Il cambio WAN modifica solo la route Internet predefinita. Le due reti dei modem restano configurate e raggiungibili.</p>
+  </section>
 
-    <section class="card">
-      <h2>Route da impostare sui modem</h2>
-      <p class="hint">Per far vedere ai due modem tutti i dispositivi della LAN, ciascun modem deve avere una route statica verso la LAN tramite l'IP WAN del Node-2.</p>
-      <div class="route-grid">
-        <div>
-          <strong>Modem WAN1</strong>
-          <pre id="route1">-</pre>
-        </div>
-        <div>
-          <strong>Modem WAN2</strong>
-          <pre id="route2">-</pre>
-        </div>
-      </div>
-    </section>
+  <section class="pf-card">
+    <div class="section-title">LAN</div>
+    <div class="info-grid">
+      <div><span class="label">Porta LAN</span><strong>enp4s0</strong></div>
+      <div><span class="label">Bridge</span><strong>br0</strong></div>
+      <div><span class="label">Rete</span><strong id="lanNet">192.168.100.0/24</strong></div>
+      <div><span class="label">Gateway LAN</span><strong>192.168.100.1</strong></div>
+    </div>
+  </section>
 
-    <section class="card">
-      <h2>Stato</h2>
-      <pre id="status">Caricamento...</pre>
-    </section>
-  </main>
+  <section class="pf-card">
+    <div class="section-title">Route statiche sui modem</div>
+    <p class="hint">Per permettere a ciascun modem di raggiungere i dispositivi della LAN, configura una route verso la LAN usando l'IP WAN del Node-2 come gateway.</p>
+    <div class="route-grid">
+      <div class="route-box">
+        <strong>Modem WAN 1</strong>
+        <pre id="route1">-</pre>
+      </div>
+      <div class="route-box">
+        <strong>Modem WAN 2</strong>
+        <pre id="route2">-</pre>
+      </div>
+    </div>
+  </section>
+
+  <details class="pf-card">
+    <summary>Configurazione avanzata</summary>
+    <div class="config-grid">
+      <label>WAN1<input id="wan1" value="enp3s0"></label>
+      <label>WAN2<input id="wan2" value="enx00e04c680270"></label>
+      <label>LAN<input id="lan" value="enp4s0"></label>
+      <label>Bridge<input id="bridge" value="br0"></label>
+      <label>LAN/CIDR<input id="lanCidr" value="192.168.100.1/24"></label>
+      <label>DHCP da<input id="dhcpStart" value="192.168.100.50"></label>
+      <label>DHCP a<input id="dhcpEnd" value="192.168.100.200"></label>
+      <label>DNS<input id="dns" value="1.1.1.1,8.8.8.8"></label>
+    </div>
+    <button id="applyBtn" class="primary" type="button">Salva e applica rete</button>
+    <div id="applyMessage" class="message"></div>
+  </details>
+
+  <section class="pf-card">
+    <div class="section-title">Stato</div>
+    <pre id="status">Caricamento...</pre>
+  </section>
+</main>
 </body>
 </html>
