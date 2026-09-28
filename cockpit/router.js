@@ -1,6 +1,5 @@
 /* global cockpit */
 "use strict";
-
 const $ = id => document.getElementById(id);
 
 function run(args) {
@@ -10,76 +9,66 @@ function run(args) {
   }).then(out => JSON.parse(out));
 }
 
-function fillSelect(id, interfaces, selected) {
-  const el = $(id);
-  el.innerHTML = "";
-  for (const i of interfaces) {
-    const o = document.createElement("option");
-    o.value = i.name;
-    o.textContent = i.name + (i.ipv4 ? " - " + i.ipv4 : "");
-    el.appendChild(o);
-  }
-  if (selected) el.value = selected;
-}
-
 function configFromForm() {
   return {
-    wan1_interface: $("wan1").value,
-    wan2_interface: $("wan2").value,
-    lan_interface: $("lan").value,
+    wan1_interface: $("wan1").value.trim(),
+    wan2_interface: $("wan2").value.trim(),
+    lan_interface: $("lan").value.trim(),
     bridge_name: $("bridge").value.trim(),
     lan_cidr: $("lanCidr").value.trim(),
     dhcp_start: $("dhcpStart").value.trim(),
     dhcp_end: $("dhcpEnd").value.trim(),
+    dhcp_lease: "12h",
     dns_servers: $("dns").value.split(",").map(x => x.trim()).filter(Boolean)
   };
 }
 
-function showRoutes(s) {
-  if (!s.network) {
-    $("route1").textContent = "-";
-    $("route2").textContent = "-";
-    return;
-  }
-  const net = s.lan_network || "LAN";
-  const w1 = s.wan1 || {};
-  const w2 = s.wan2 || {};
-  $("route1").textContent =
-    "Destinazione: " + net + "\nGateway: " + (w1.ip || "IP WAN1 non disponibile");
-  $("route2").textContent =
-    "Destinazione: " + net + "\nGateway: " + (w2.ip || "IP WAN2 non disponibile");
+function loadForm(n) {
+  $("wan1").value = n.wan1_interface || "enp3s0";
+  $("wan2").value = n.wan2_interface || "enx00e04c680270";
+  $("lan").value = n.lan_interface || "enp4s0";
+  $("bridge").value = n.bridge_name || "br0";
+  $("lanCidr").value = n.lan_cidr || "192.168.100.1/24";
+  $("dhcpStart").value = n.dhcp_start || "192.168.100.50";
+  $("dhcpEnd").value = n.dhcp_end || "192.168.100.200";
+  $("dns").value = (n.dns_servers || ["1.1.1.1","8.8.8.8"]).join(",");
 }
 
-async function refresh(firstLoad=false) {
+function showState(s, first=false) {
+  const active = s.active || null;
+  $("activeBadge").textContent = "WAN attiva: " + (active ? active.toUpperCase() : "-");
+  $("wan1Btn").classList.toggle("active", active === "wan1");
+  $("wan2Btn").classList.toggle("active", active === "wan2");
+
+  const w1 = s.wan1 || {};
+  const w2 = s.wan2 || {};
+  $("wan1Ip").textContent = "IP: " + (w1.ip || "-");
+  $("wan1Gw").textContent = "Gateway: " + (w1.gateway || "-");
+  $("wan2Ip").textContent = "IP: " + (w2.ip || "-");
+  $("wan2Gw").textContent = "Gateway: " + (w2.gateway || "-");
+
+  $("lanNet").textContent = s.lan_network || "192.168.100.0/24";
+  $("route1").textContent =
+    "Destinazione: " + (s.lan_network || "192.168.100.0/24") +
+    "\nGateway: " + (w1.ip || "IP WAN1 non disponibile");
+  $("route2").textContent =
+    "Destinazione: " + (s.lan_network || "192.168.100.0/24") +
+    "\nGateway: " + (w2.ip || "IP WAN2 non disponibile");
+
+  $("status").textContent = JSON.stringify({
+    active: s.active,
+    routes: s.routes,
+    wan1: s.wan1,
+    wan2: s.wan2
+  }, null, 2);
+
+  if (first) loadForm(s.network || {});
+}
+
+async function refresh(first=false) {
   try {
     const s = await run(["status"]);
-    $("activeBadge").textContent = "WAN attiva: " + (s.active ? s.active.toUpperCase() : "-");
-    $("wan1Btn").classList.toggle("active", s.active === "wan1");
-    $("wan2Btn").classList.toggle("active", s.active === "wan2");
-    $("status").textContent = JSON.stringify(s, null, 2);
-    showRoutes(s);
-
-    if (firstLoad) {
-      const ifs = await run(["interfaces"]);
-      const n = s.network || {
-        wan1_interface: "enp3s0",
-        wan2_interface: "enx00e04c680270",
-        lan_interface: "enp4s0",
-        bridge_name: "br0",
-        lan_cidr: "192.168.100.1/24",
-        dhcp_start: "192.168.100.50",
-        dhcp_end: "192.168.100.200",
-        dns_servers: ["1.1.1.1","8.8.8.8"]
-      };
-      fillSelect("wan1", ifs.interfaces, n.wan1_interface);
-      fillSelect("wan2", ifs.interfaces, n.wan2_interface);
-      fillSelect("lan", ifs.interfaces, n.lan_interface);
-      $("bridge").value = n.bridge_name;
-      $("lanCidr").value = n.lan_cidr;
-      $("dhcpStart").value = n.dhcp_start;
-      $("dhcpEnd").value = n.dhcp_end;
-      $("dns").value = (n.dns_servers || []).join(",");
-    }
+    showState(s, first);
   } catch (e) {
     $("status").textContent = String(e);
   }
@@ -88,24 +77,21 @@ async function refresh(firstLoad=false) {
 async function selectWan(which) {
   $("switchMessage").textContent = "Cambio linea...";
   try {
-    await run(["switch", which]);
-    $("switchMessage").innerHTML = '<span class="ok">Linea cambiata.</span>';
-    await refresh();
+    const s = await run(["switch", which]);
+    $("switchMessage").innerHTML = '<span class="ok">Linea ' + which.toUpperCase() + ' attiva.</span>';
+    showState(s);
   } catch (e) {
     $("switchMessage").innerHTML = '<span class="error">' + String(e) + '</span>';
   }
 }
 
 async function applyNetwork() {
-  const cfg = configFromForm();
   if (!confirm("Applicare la rete può interrompere temporaneamente la sessione. Continuare?")) return;
   $("applyMessage").textContent = "Applicazione...";
   try {
-    const result = await run(["apply", JSON.stringify(cfg)]);
+    const s = await run(["apply", JSON.stringify(configFromForm())]);
     $("applyMessage").innerHTML = '<span class="ok">Configurazione applicata.</span>';
-    $("status").textContent = JSON.stringify(result, null, 2);
-    showRoutes(result);
-    setTimeout(() => refresh(), 2500);
+    showState(s, true);
   } catch (e) {
     $("applyMessage").innerHTML = '<span class="error">' + String(e) + '</span>';
   }
@@ -116,4 +102,4 @@ $("wan2Btn").addEventListener("click", () => selectWan("wan2"));
 $("applyBtn").addEventListener("click", applyNetwork);
 
 refresh(true);
-setInterval(() => refresh(), 5000);
+setInterval(() => refresh(false), 5000);
