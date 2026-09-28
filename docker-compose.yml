@@ -1,0 +1,14 @@
+services:
+  net-router:
+    build: .
+    container_name: net-router
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      CONFIG_PATH: /config/config.yaml
+      STATE_PATH: /data/state.json
+      ROUTER_SOCKET: /run/net-router/router.sock
+    volumes:
+      - ./config:/config
+      - ./data:/data
+      - /run/net-router:/run/net-router
