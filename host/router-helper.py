@@ -17,10 +17,6 @@ def run(argv, timeout=180, check=True):
         raise RuntimeError((p.stderr or p.stdout or "command failed").strip())
     return p.stdout.strip()
 
-def nm_exists(name):
-    p = subprocess.run(["nmcli", "-t", "-f", "NAME", "connection", "show", name], text=True, capture_output=True)
-    return p.returncode == 0
-
 def nm_delete(name):
     subprocess.run(["nmcli", "connection", "delete", name], text=True, capture_output=True)
 
@@ -66,8 +62,6 @@ def validate_network(c):
     ports = [c["wan1_interface"], c["wan2_interface"], c["lan_interface"]]
     if len(set(ports)) != 3:
         raise RuntimeError("WAN1, WAN2 and LAN must be three different interfaces")
-    if not c["bridge_name"].replace("-", "").replace("_", "").isalnum():
-        raise RuntimeError("invalid bridge name")
     net = ipaddress.ip_interface(c["lan_cidr"])
     start = ipaddress.ip_address(c["dhcp_start"])
     end = ipaddress.ip_address(c["dhcp_end"])
@@ -79,62 +73,47 @@ def write_dnsmasq(c, net):
     dns = c.get("dns_servers") or ["1.1.1.1", "8.8.8.8"]
     lease = c.get("dhcp_lease", "12h")
     bridge = c["bridge_name"]
-    conf = f"""interface={bridge}
-bind-dynamic
-dhcp-range={c['dhcp_start']},{c['dhcp_end']},{net.network.netmask},{lease}
-dhcp-option=3,{net.ip}
-dhcp-option=6,{','.join(dns)}
-"""
-    Path("/etc/dnsmasq.d/net-router.conf").write_text(conf)
+    Path("/etc/dnsmasq.d/net-router.conf").write_text(
+        f"interface={bridge}\n"
+        "bind-dynamic\n"
+        f"dhcp-range={c['dhcp_start']},{c['dhcp_end']},{net.network.netmask},{lease}\n"
+        f"dhcp-option=3,{net.ip}\n"
+        f"dhcp-option=6,{','.join(dns)}\n"
+    )
     run(["systemctl", "enable", "dnsmasq"], check=False)
     run(["systemctl", "restart", "dnsmasq"])
 
-def setup_firewall(c):
-    wan1 = c["wan1_interface"]
-    wan2 = c["wan2_interface"]
+def setup_forwarding_no_nat():
     subprocess.run(["nft", "delete", "table", "inet", "net_router"], capture_output=True, text=True)
-    cmds = [
-        ["nft", "add", "table", "inet", "net_router"],
-        ["nft", "add", "chain", "inet", "net_router", "forward", "{", "type", "filter", "hook", "forward", "priority", "0", ";", "policy", "accept", ";", "}"],
-        ["nft", "add", "chain", "inet", "net_router", "postrouting", "{", "type", "nat", "hook", "postrouting", "priority", "100", ";", "policy", "accept", ";", "}"],
-        ["nft", "add", "rule", "inet", "net_router", "postrouting", "oifname", wan1, "masquerade"],
-        ["nft", "add", "rule", "inet", "net_router", "postrouting", "oifname", wan2, "masquerade"],
-    ]
-    for cmd in cmds:
-        run(cmd)
+    run(["nft", "add", "table", "inet", "net_router"])
+    run(["nft", "add", "chain", "inet", "net_router", "forward", "{", "type", "filter", "hook", "forward", "priority", "0", ";", "policy", "accept", ";", "}"])
     Path("/etc/sysctl.d/99-net-router.conf").write_text("net.ipv4.ip_forward=1\n")
     run(["sysctl", "-w", "net.ipv4.ip_forward=1"])
 
 def setup_nm(c, net):
-    wan1 = c["wan1_interface"]
-    wan2 = c["wan2_interface"]
-    lan = c["lan_interface"]
-    bridge = c["bridge_name"]
-
+    wan1, wan2, lan, bridge = c["wan1_interface"], c["wan2_interface"], c["lan_interface"], c["bridge_name"]
     for name in ("net-router-wan1", "net-router-wan2", "net-router-bridge", "net-router-lan-port"):
         nm_delete(name)
 
-    run(["nmcli", "connection", "add", "type", "ethernet", "ifname", wan1, "con-name", "net-router-wan1",
-         "ipv4.method", "auto", "ipv4.route-metric", "100", "ipv6.method", "auto"])
-    run(["nmcli", "connection", "add", "type", "ethernet", "ifname", wan2, "con-name", "net-router-wan2",
-         "ipv4.method", "auto", "ipv4.route-metric", "500", "ipv6.method", "auto"])
-    run(["nmcli", "connection", "add", "type", "bridge", "ifname", bridge, "con-name", "net-router-bridge",
-         "ipv4.method", "manual", "ipv4.addresses", str(net), "ipv4.never-default", "yes", "ipv6.method", "disabled"])
-    run(["nmcli", "connection", "add", "type", "ethernet", "ifname", lan, "con-name", "net-router-lan-port",
-         "master", bridge, "slave-type", "bridge"])
+    run(["nmcli","connection","add","type","ethernet","ifname",wan1,"con-name","net-router-wan1",
+         "ipv4.method","auto","ipv4.route-metric","100","ipv6.method","auto"])
+    run(["nmcli","connection","add","type","ethernet","ifname",wan2,"con-name","net-router-wan2",
+         "ipv4.method","auto","ipv4.route-metric","500","ipv6.method","auto"])
+    run(["nmcli","connection","add","type","bridge","ifname",bridge,"con-name","net-router-bridge",
+         "ipv4.method","manual","ipv4.addresses",str(net),"ipv4.never-default","yes","ipv6.method","disabled"])
+    run(["nmcli","connection","add","type","ethernet","ifname",lan,"con-name","net-router-lan-port",
+         "master",bridge,"slave-type","bridge"])
 
-    run(["nmcli", "connection", "up", "net-router-bridge"], check=False)
-    run(["nmcli", "connection", "up", "net-router-lan-port"], check=False)
-    run(["nmcli", "connection", "up", "net-router-wan1"], check=False)
-    run(["nmcli", "connection", "up", "net-router-wan2"], check=False)
+    for name in ("net-router-bridge","net-router-lan-port","net-router-wan1","net-router-wan2"):
+        run(["nmcli","connection","up",name], check=False)
 
-def apply_network(c):
+def apply_network_manual(c):
     net = validate_network(c)
     PERSIST.parent.mkdir(parents=True, exist_ok=True)
     PERSIST.write_text(json.dumps(c, indent=2))
     setup_nm(c, net)
     write_dnsmasq(c, net)
-    setup_firewall(c)
+    setup_forwarding_no_nat()
     return status(c)
 
 def load_persisted():
@@ -143,24 +122,19 @@ def load_persisted():
     return None
 
 def active_wan(c):
-    wan1 = c["wan1_interface"]
-    wan2 = c["wan2_interface"]
-    out = run(["ip", "-4", "route", "show", "default"], check=False)
-    best = None
-    best_metric = 2**31
+    if not c:
+        return None
+    wan1, wan2 = c["wan1_interface"], c["wan2_interface"]
+    out = run(["ip","-4","route","show","default"], check=False)
+    best, best_metric = None, 2**31
     for line in out.splitlines():
         p = line.split()
         if "dev" not in p:
             continue
-        dev = p[p.index("dev") + 1]
+        dev = p[p.index("dev")+1]
         if dev not in (wan1, wan2):
             continue
-        metric = 0
-        if "metric" in p:
-            try:
-                metric = int(p[p.index("metric") + 1])
-            except Exception:
-                pass
+        metric = int(p[p.index("metric")+1]) if "metric" in p else 0
         if metric < best_metric:
             best_metric = metric
             best = "wan1" if dev == wan1 else "wan2"
@@ -168,70 +142,36 @@ def active_wan(c):
 
 def status(c=None):
     c = c or load_persisted()
-    routes = run(["ip", "-4", "route", "show", "default"], check=False)
-    return {
+    data = {
         "ok": True,
-        "active": active_wan(c) if c else None,
-        "routes": routes,
+        "active": active_wan(c),
+        "routes": run(["ip","-4","route","show","default"], check=False),
         "network": c,
         "interfaces": interfaces()["interfaces"],
     }
+    if c:
+        data["wan1"] = {"interface": c["wan1_interface"], "ip": ipv4_for(c["wan1_interface"]), "gateway": gateway_for(c["wan1_interface"])}
+        data["wan2"] = {"interface": c["wan2_interface"], "ip": ipv4_for(c["wan2_interface"]), "gateway": gateway_for(c["wan2_interface"])}
+        data["lan_network"] = str(ipaddress.ip_interface(c["lan_cidr"]).network)
+    return data
 
 def switch(which, c=None):
     c = c or load_persisted()
     if not c:
         raise RuntimeError("network has not been applied yet")
-    if which not in ("wan1", "wan2"):
-        raise RuntimeError("invalid wan")
     selected = c[f"{which}_interface"]
-    other_key = "wan2" if which == "wan1" else "wan1"
-    other = c[f"{other_key}_interface"]
+    other = c["wan2_interface"] if which == "wan1" else c["wan1_interface"]
+
     gw = gateway_for(selected)
-    if not gw:
-        raise RuntimeError(f"no gateway on {selected}")
     src = ipv4_for(selected)
-    if not src:
-        raise RuntimeError(f"no IPv4 on {selected}")
+    if not gw or not src:
+        raise RuntimeError(f"{selected} has no usable IPv4/gateway")
 
-    run(["ip", "route", "replace", "default", "via", gw, "dev", selected, "src", src, "metric", "5"])
-    ogw = gateway_for(other)
-    osrc = ipv4_for(other)
+    run(["ip","route","replace","default","via",gw,"dev",selected,"src",src,"metric","5"])
+    ogw, osrc = gateway_for(other), ipv4_for(other)
     if ogw and osrc:
-        run(["ip", "route", "replace", "default", "via", ogw, "dev", other, "src", osrc, "metric", "500"], check=False)
-    return {"ok": True, "active": which}
-
-def speedtest(interface, server_id, timeout):
-    args = ["speedtest", "--accept-license", "--accept-gdpr", "--progress=no", "--format=json", "--interface", interface]
-    if int(server_id or 0):
-        args += ["--server-id", str(int(server_id))]
-    raw = run(args, timeout=timeout)
-    j = json.loads(raw)
-    return {
-        "ok": True,
-        "download_mbps": round((j["download"]["bandwidth"] * 8) / 1_000_000, 2),
-        "upload_mbps": round((j["upload"]["bandwidth"] * 8) / 1_000_000, 2),
-        "ping_ms": j.get("ping", {}).get("latency"),
-        "packet_loss": j.get("packetLoss"),
-        "server": j.get("server", {}).get("name"),
-        "server_id": j.get("server", {}).get("id"),
-        "isp": j.get("isp"),
-        "external_ip": j.get("interface", {}).get("externalIp"),
-    }
-
-def list_servers(interface, timeout=60):
-    raw = run(["speedtest", "--accept-license", "--accept-gdpr", "--servers", "--interface", interface], timeout=timeout)
-    servers = []
-    for line in raw.splitlines():
-        line = line.strip()
-        if not line or not line[0].isdigit():
-            continue
-        first = line.split()[0]
-        try:
-            sid = int(first)
-        except Exception:
-            continue
-        servers.append({"id": sid, "label": line})
-    return {"ok": True, "servers": servers}
+        run(["ip","route","replace","default","via",ogw,"dev",other,"src",osrc,"metric","500"], check=False)
+    return status(c)
 
 def handle(conn):
     try:
@@ -247,14 +187,10 @@ def handle(conn):
             res = interfaces()
         elif action == "status":
             res = status()
-        elif action == "apply_network":
-            res = apply_network(req["config"])
-        elif action == "switch":
+        elif action == "apply_network_manual":
+            res = apply_network_manual(req["config"])
+        elif action == "switch" and req.get("wan") in ("wan1","wan2"):
             res = switch(req["wan"])
-        elif action == "speedtest":
-            res = speedtest(req["interface"], req.get("server_id", 0), int(req.get("timeout", 120)))
-        elif action == "servers":
-            res = list_servers(req["interface"], int(req.get("timeout", 60)))
         else:
             raise RuntimeError("invalid request")
     except Exception as e:
@@ -267,16 +203,16 @@ try:
     os.unlink(SOCK)
 except FileNotFoundError:
     pass
+
 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 s.bind(SOCK)
 os.chmod(SOCK, 0o666)
 s.listen(20)
 
-# Re-apply persisted router configuration after reboot.
 try:
     persisted = load_persisted()
     if persisted:
-        apply_network(persisted)
+        apply_network_manual(persisted)
 except Exception:
     pass
 
