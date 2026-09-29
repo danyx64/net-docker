@@ -6,31 +6,32 @@
 <script defer src="router.js"></script>
 </head><body>
 <main class="page">
-  <div class="head"><div><h1>Router</h1><p>Bridge manuale verso la porta LAN</p></div><span id="badge" class="badge">Ponte: -</span></div>
+  <div class="head">
+    <div><h1>Router</h1><p>Selezione manuale della linea Internet di Node-2 e dell'homelab</p></div>
+    <span id="badge" class="badge">Internet: -</span>
+  </div>
 
   <section class="card">
-    <h2>Scegli quale modem collegare a enp4s0</h2>
+    <h2>Scegli Internet</h2>
     <div class="grid">
       <button id="w1" class="wan" type="button">
-        <span class="title">WAN 1</span>
-        <span class="iface">enp3s0 → enp4s0</span>
-        <span class="sub">Collega il modem 1 allo switch</span>
+        <span class="title">Modem 1 · Deco</span>
+        <span class="iface">enp4s0 · 192.168.1.100</span>
+        <span class="sub">Gateway 192.168.1.1</span>
       </button>
       <button id="w2" class="wan" type="button">
-        <span class="title">WAN 2</span>
-        <span class="iface">enx00e04c680270 → enp4s0</span>
-        <span class="sub">Collega il modem 2 allo switch</span>
+        <span class="title">Modem 2 · Vodafone</span>
+        <span class="iface">enx00e04c680270 · 192.168.10.100</span>
+        <span class="sub">Gateway 192.168.10.1</span>
       </button>
     </div>
     <div id="msg" class="msg"></div>
   </section>
 
   <section class="card">
-    <h2>Schema attuale</h2>
-    <div class="diagram">
-      <div>Modem selezionato</div><div>→</div><div id="selectedIface">-</div><div>→</div><div>br0</div><div>→</div><div>enp4s0</div><div>→</div><div>GS308</div>
-    </div>
-    <p class="note">I client dietro il GS308 ricevono direttamente DHCP, gateway e rete dal modem selezionato.</p>
+    <h2>LAN homelab</h2>
+    <div class="diagram"><b>enp3s0</b><span>→</span><b>192.168.100.1/24</b><span>→</span><b>GS308 / server</b></div>
+    <p class="note">La LAN non viene toccata quando cambi modem. Cambia solo la default route.</p>
   </section>
 
   <details class="card"><summary>Stato tecnico</summary><pre id="status">Caricamento...</pre></details>
