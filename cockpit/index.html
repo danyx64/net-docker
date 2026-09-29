@@ -4,15 +4,18 @@
 <link rel="stylesheet" href="router.css">
 <script src="../base1/cockpit.js"></script>
 <script defer src="router.js"></script>
-</head><body>
+</head><body class="dark">
 <main class="page">
-  <div class="head">
-    <div><h1>Router</h1><p>Selezione manuale della linea Internet di Node-2 e dell'homelab</p></div>
-    <span id="badge" class="badge">Internet: -</span>
-  </div>
+  <header class="head">
+    <div><h1>Router</h1><p>Dual WAN e mapping 1:1 dell'homelab</p></div>
+    <div class="head-actions">
+      <span id="badge" class="badge">Internet: -</span>
+      <button id="theme" class="ghost" type="button">☀ Modalità chiara</button>
+    </div>
+  </header>
 
   <section class="card">
-    <h2>Scegli Internet</h2>
+    <h2>Internet attiva</h2>
     <div class="grid">
       <button id="w1" class="wan" type="button">
         <span class="title">Modem 1 · Deco</span>
@@ -29,9 +32,30 @@
   </section>
 
   <section class="card">
+    <div class="section-head">
+      <div><h2>Server esposti sulle reti dei modem</h2><p class="note">Un mapping rappresenta tutto il server: tutte le porte mantengono lo stesso numero.</p></div>
+      <button id="showAdd" class="primary" type="button">+ Aggiungi mapping</button>
+    </div>
+
+    <form id="addForm" class="mapping-form hidden">
+      <label>Nome<input id="label" placeholder="es. Jellyfin / NAS"></label>
+      <label>IP homelab<input id="lanIp" placeholder="192.168.100.25" required></label>
+      <label>IP Deco<input id="wan1Ip" placeholder="192.168.1.25" required></label>
+      <label>IP Vodafone<input id="wan2Ip" placeholder="192.168.10.25" required></label>
+      <div class="form-actions"><button class="primary" type="submit">Salva mapping</button><button id="cancelAdd" class="ghost" type="button">Annulla</button></div>
+    </form>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Server</th><th>Homelab</th><th>Deco</th><th>Vodafone</th><th></th></tr></thead>
+        <tbody id="mappingRows"><tr><td colspan="5" class="empty">Nessun mapping configurato.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>LAN homelab</h2>
     <div class="diagram"><b>enp3s0</b><span>→</span><b>192.168.100.1/24</b><span>→</span><b>GS308 / server</b></div>
-    <p class="note">La LAN non viene toccata quando cambi modem. Cambia solo la default route.</p>
   </section>
 
   <details class="card"><summary>Stato tecnico</summary><pre id="status">Caricamento...</pre></details>
