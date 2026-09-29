@@ -18,15 +18,20 @@ def req(payload):
     raise SystemExit(0 if d.get("ok") else 1)
 
 if len(sys.argv)<2:
-    print('{"ok":false,"error":"usage: net-routerctl status|switch wan1|switch wan2|rebuild"}')
+    print('{"ok":false,"error":"usage: net-routerctl status|switch wan1|switch wan2|mapping-add LAN_IP DECO_IP VODAFONE_IP [LABEL]|mapping-del LAN_IP"}')
     raise SystemExit(2)
 
-if sys.argv[1]=="status":
+cmd=sys.argv[1]
+if cmd=="status":
     req({"action":"status"})
-elif sys.argv[1]=="rebuild":
-    req({"action":"rebuild"})
-elif sys.argv[1]=="switch" and len(sys.argv)==3 and sys.argv[2] in ("wan1","wan2"):
+elif cmd=="switch" and len(sys.argv)==3 and sys.argv[2] in ("wan1","wan2"):
     req({"action":"switch","wan":sys.argv[2]})
+elif cmd=="mapping-add" and len(sys.argv)>=5:
+    req({"action":"mapping_add","lan_ip":sys.argv[2],"wan1_ip":sys.argv[3],"wan2_ip":sys.argv[4],"label":" ".join(sys.argv[5:])})
+elif cmd=="mapping-del" and len(sys.argv)==3:
+    req({"action":"mapping_delete","lan_ip":sys.argv[2]})
+elif cmd=="mapping-apply":
+    req({"action":"mapping_apply"})
 else:
     print('{"ok":false,"error":"invalid command"}')
     raise SystemExit(2)
